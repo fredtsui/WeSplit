@@ -9,50 +9,59 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var checkAmount = 0.0
+    @State private var numberOfPeople = 2
+    @State private var tipPercentage = 20
+    let tipPercentages = [10, 15, 20, 25, 0]
+    @FocusState private var amountIsFocused: Bool
+    var totalPerPerson: Double {
+        let peoplecount = Double(numberOfPeople+2)
+        let tipSelection = Double(tipPercentage)
+        let tipValue = checkAmount / 100 * tipSelection
+        let grandTotal = checkAmount + tipValue
+        let amountPerPerson = grandTotal / peoplecount
+        return amountPerPerson
+    }
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationStack{
+            Form{
+                Section{
+                    TextField("Amount", value: $checkAmount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                        .keyboardType(.decimalPad)
+                        .focused($amountIsFocused)
+                    Picker("Number of People", selection: $numberOfPeople){
+                        ForEach(2..<100){
+                            Text("\($0) people")
+                        }
                     }
+                    .pickerStyle(.navigationLink)
+                    
                 }
-                .onDelete(perform: deleteItems)
+                Section("How much tip do you want to leave?"){
+                    Picker("Selct a Tip", selection: $tipPercentage){
+                        ForEach(tipPercentages, id :\.self){
+                            Text($0, format: .percent)
+                        }
+                        
+                    }
+                    .pickerStyle(.segmented)
+                }
+                Section{
+                    Text(totalPerPerson, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                }
             }
+            .navigationTitle("WeSplit")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                if amountIsFocused {
+                    Button("Done") {
+                        amountIsFocused = false
                     }
                 }
             }
-        } detail: {
-            Text("Select an item")
         }
     }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
-    }
+    
 }
 
 #Preview {
